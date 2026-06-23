@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>AHR</title>
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#06120c" />
+<link rel="icon" href="icon-192.png" />
+<link rel="apple-touch-icon" href="icon-192.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin:0; padding:0; background:#06120c; }
+  body {
+    font-family:'Noto Sans Bengali','Hind Siliguri',system-ui,sans-serif;
+    color:#eef3ea;
+    padding: max(20px, env(safe-area-inset-top)) 14px calc(60px + env(safe-area-inset-bottom));
+    min-height:100vh;
+    background: radial-gradient(circle at 20% 0%, rgba(63,122,82,0.16), transparent 55%),
+                radial-gradient(circle at 90% 30%, rgba(217,181,74,0.06), transparent 50%),
+                #06120c;
+  }
+
+  /* ---------- Splash ---------- */
+  #splash {
+    position:fixed; inset:0; background:#06120c; z-index:999;
+    display:flex; align-items:center; justify-content:center;
+    transition: opacity .5s ease;
+  }
+  #splash img { width:84px; height:84px; opacity:0; animation: logoFade 1s ease forwards; filter: drop-shadow(0 0 18px rgba(63,122,82,0.5)); }
+  @keyframes logoFade { from { opacity:0; transform: scale(0.85); } to { opacity:1; transform: scale(1); } }
+  #splash.hide { opacity:0; pointer-events:none; }
+
+  /* ---------- Glass utility ---------- */
+  .glass {
+    background: linear-gradient(160deg, rgba(20,38,28,0.65), rgba(10,22,16,0.55));
+    border: 1px solid rgba(120,180,140,0.14);
+    backdrop-filter: blur(6px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.03);
+    border-radius: 16px;
+  }
+
+  .btn { cursor:pointer; border:none; font-family:inherit; transition: transform .12s ease, box-shadow .2s ease; position:relative; overflow:hidden; }
+  .btn:active { transform: scale(0.96); }
+
+  /* ripple */
+  .ripple { position:absolute; border-radius:50%; background: rgba(255,255,255,0.25); transform: scale(0); animation: rippleAnim .5s ease-out; pointer-events:none; }
+  @keyframes rippleAnim { to { transform: scale(3.2); opacity:0; } }
+
+  .day {
+    cursor:pointer; border:1px solid rgba(120,180,140,0.12); background: rgba(20,32,25,0.55);
+    color:#cfe0d3; border-radius:12px; font-family:inherit; aspect-ratio:1/1;
+    backdrop-filter: blur(3px); transition: transform .15s ease, background .2s ease, border-color .2s ease;
+  }
+  .day:hover { border-color: rgba(63,122,82,0.5); }
+  .day:active { transform: scale(0.92); }
+
+  .month-tab { flex:0 0 auto; padding:7px 14px; border-radius:999px; font-size:13px; background: rgba(20,32,25,0.55); color:#a9bdae; border:1px solid rgba(120,180,140,0.14); transition: all .2s ease; }
+  .month-tab.active { background: linear-gradient(135deg,#e3c364,#bd9a3d); color:#1a1305; border-color: transparent; font-weight:700; box-shadow: 0 4px 14px rgba(217,181,74,0.25); }
+  .scrollx { display:flex; gap:6px; overflow-x:auto; padding-bottom:4px; }
+  .scrollx::-webkit-scrollbar { height:6px; }
+  .scrollx::-webkit-scrollbar-thumb { background: rgba(63,122,82,0.4); border-radius:4px; }
+
+  .stat-card { flex:1; padding:14px 10px; text-align:center; animation: cardFade .5s ease both; }
+  .stat-label { color:#7c9485; font-size:11px; }
+
+  .modal-overlay { position:fixed; inset:0; background:rgba(3,8,5,0.78); display:flex; align-items:center; justify-content:center; padding:16px; z-index:50; opacity:0; animation: overlayFade .25s ease forwards; }
+  @keyframes overlayFade { to { opacity:1; } }
+  .modal-box { padding:22px; width:100%; max-width:360px; transform: translateY(14px) scale(0.97); opacity:0; animation: modalIn .28s ease forwards; }
+  @keyframes modalIn { to { transform: translateY(0) scale(1); opacity:1; } }
+
+  textarea, input[type=text], input[type=number] {
+    width:100%; background: rgba(6,18,12,0.6); border:1px solid rgba(120,180,140,0.2); border-radius:12px;
+    color:#eef3ea; padding:11px; font-size:14px; font-family:inherit; resize:vertical;
+    transition: border-color .2s ease, box-shadow .2s ease;
+  }
+  textarea:focus, input:focus { outline:none; border-color:#3f7a52; box-shadow: 0 0 0 3px rgba(63,122,82,0.18); }
+
+  .hidden { display:none !important; }
+  .toptab { flex:1; padding:10px 0; border-radius:11px; font-size:13px; font-weight:700; background:transparent; color:#a9bdae; transition: all .25s ease; }
+  .toptab.active { background: linear-gradient(135deg,#e3c364,#bd9a3d); color:#1a1305; box-shadow: 0 4px 14px rgba(217,181,74,0.22); }
+
+  .page { display:none; animation: pageFade .35s ease; }
+  .page.active { display:block; }
+  @keyframes pageFade { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform: translateY(0); } }
+  @keyframes cardFade { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform: translateY(0); } }
+
+  .bn-num { font-feature-settings: "tnum"; }
+</style>
+</head>
+<body>
+
+  <div id="splash">
+    <img src="icon-512.png" alt="AHR" />
+  </div>
+
+  <div style="max-width:640px;margin:0 auto;">
+    <div class="glass" style="padding:18px 16px;margin-bottom:16px;text-align:center;animation:cardFade .5s ease both;">
+      <div style="font-size:26px;line-height:1.6;color:#d9b54a;font-family:'Traditional Arabic','Scheherazade New','Amiri',serif;letter-spacing:0.5px;">
+        بِسْمِ ٱللَّٰهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ
+      </div>
+    </div>
+
+    <div style="display:flex;gap:6px;background:rgba(20,32,25,0.55);border:1px solid rgba(120,180,140,0.14);backdrop-filter:blur(6px);border-radius:14px;padding:4px;margin-bottom:18px;">
+      <button class="btn toptab active" id="tabCalendarBtn">📅 ক্যালেন্ডার</button>
+      <button class="btn toptab" id="tabMoneyBtn">💰 টাকা</button>
+    </div>
+  </div>
+
+  <!-- CALENDAR PAGE -->
+  <div class="page active" id="pageCalendar">
+    <div style="max-width:640px;margin:0 auto 18px;">
+      <h1 id="yearTitle" class="bn-num" style="font-size:30px;font-weight:800;margin:0 0 16px;color:#e9d9a8;text-align:center;letter-spacing:1px;"></h1>
+      <div class="glass" style="display:flex;padding:4px;">
+        <div class="stat-card"><div class="bn-num" id="greenCount" style="color:#7fce8f;font-weight:800;font-size:22px;">0</div></div>
+        <div class="stat-card" style="border-left:1px solid rgba(120,180,140,0.14);border-right:1px solid rgba(120,180,140,0.14);"><div class="bn-num" id="redCount" style="color:#e58a8a;font-weight:800;font-size:22px;">0</div></div>
+        <div class="stat-card"><div class="bn-num" id="rate" style="color:#d9b54a;font-weight:800;font-size:22px;">0%</div></div>
+      </div>
+    </div>
+
+    <div class="scrollx" id="monthTabs" style="max-width:640px;margin:0 auto 14px;"></div>
+
+    <div class="glass" style="max-width:640px;margin:0 auto;padding:14px;">
+      <div id="weekHeader" style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:8px;"></div>
+      <div id="calendarGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;"></div>
+    </div>
+
+    <div style="max-width:640px;margin:16px auto 0;display:flex;gap:16px;font-size:12px;color:#7c9485;justify-content:center;">
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#3f7a52;margin-right:6px;vertical-align:middle;"></span>টার্গেট পূরণ</span>
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#7a3f3f;margin-right:6px;vertical-align:middle;"></span>মিস হয়েছে</span>
+    </div>
+  </div>
+
+  <!-- MONEY PAGE -->
+  <div class="page" id="pageMoney">
+    <div style="max-width:640px;margin:0 auto;">
+      <div class="glass" style="padding:22px 18px;text-align:center;margin-bottom:14px;">
+        <div style="font-size:12px;color:#7c9485;margin-bottom:6px;">মোট ব্যালেন্স</div>
+        <div id="balanceDisplay" class="bn-num" style="font-size:34px;font-weight:800;color:#9fe6ad;">৳০</div>
+        <div style="display:flex;gap:10px;margin-top:16px;font-size:12px;">
+          <div style="flex:1;background:rgba(6,18,12,0.5);border:1px solid rgba(120,180,140,0.12);border-radius:12px;padding:10px;">
+            <div style="color:#7c9485;">মোট ইনকাম</div>
+            <div id="totalIncome" class="bn-num" style="color:#7fce8f;font-weight:700;font-size:16px;">৳০</div>
+          </div>
+          <div style="flex:1;background:rgba(6,18,12,0.5);border:1px solid rgba(120,180,140,0.12);border-radius:12px;padding:10px;">
+            <div style="color:#7c9485;">মোট খরচ</div>
+            <div id="totalExpense" class="bn-num" style="color:#e58a8a;font-weight:700;font-size:16px;">৳০</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-bottom:18px;">
+        <button class="btn" id="btnAddIncome" style="flex:1;padding:14px 0;border-radius:14px;background:linear-gradient(160deg,rgba(63,122,82,0.35),rgba(20,38,28,0.5));color:#9fe6ad;font-weight:700;font-size:14px;border:1px solid rgba(63,122,82,0.45);backdrop-filter:blur(6px);">+ টাকা যোগ</button>
+        <button class="btn" id="btnAddExpense" style="flex:1;padding:14px 0;border-radius:14px;background:linear-gradient(160deg,rgba(122,63,63,0.35),rgba(38,20,20,0.5));color:#e6a3a3;font-weight:700;font-size:14px;border:1px solid rgba(122,63,63,0.45);backdrop-filter:blur(6px);">− খরচ</button>
+      </div>
+
+      <div id="txList"></div>
+    </div>
+  </div>
+
+  <!-- CALENDAR MODAL -->
+  <div id="calModalOverlay" class="modal-overlay hidden">
+    <div class="modal-box glass" onclick="event.stopPropagation()">
+      <div id="modalDate" class="bn-num" style="font-size:13px;color:#7c9485;margin-bottom:2px;"></div>
+      <div style="font-size:16px;font-weight:600;color:#eef3ea;margin-bottom:16px;">আজকের টার্গেট পূরণ হয়েছে কি?</div>
+      <div style="display:flex;gap:10px;margin-bottom:4px;">
+        <button class="btn" id="btnGreen" style="flex:1;padding:12px 0;border-radius:12px;background:rgba(29,58,38,0.7);color:#9fe6ad;font-weight:700;font-size:14px;border:1px solid rgba(63,122,82,0.4);">✓ হ্যাঁ</button>
+        <button class="btn" id="btnRed" style="flex:1;padding:12px 0;border-radius:12px;background:rgba(58,29,29,0.7);color:#e6a3a3;font-weight:700;font-size:14px;border:1px solid rgba(122,63,63,0.4);">✕ না</button>
+      </div>
+      <div id="alhamdulillahMsg" class="hidden" style="font-size:14px;color:#9fe6ad;padding:8px 2px;font-weight:600;">আলহামদুলিল্লাহ</div>
+      <div id="reasonBox" class="hidden" style="margin-top:4px;">
+        <label style="font-size:12px;color:#7c9485;display:block;margin-bottom:6px;">কী কারণে হয়নি? (ঐচ্ছিক)</label>
+        <textarea id="reasonInput" rows="3" placeholder="যেমন: ব্যস্ত ছিলাম, ভুলে গিয়েছিলাম..."></textarea>
+      </div>
+      <div id="modalError" style="color:#e6a3a3;font-size:12px;margin-top:10px;"></div>
+      <div style="display:flex;gap:8px;margin-top:18px;">
+        <button class="btn" id="btnClear" style="display:none;padding:10px 14px;border-radius:10px;background:transparent;color:#7c9485;font-size:13px;border:1px solid rgba(120,180,140,0.18);">মুছে দাও</button>
+        <button class="btn" id="btnCancel" style="padding:10px 14px;border-radius:10px;background:transparent;color:#7c9485;font-size:13px;border:1px solid rgba(120,180,140,0.18);">বাতিল</button>
+        <button class="btn" id="btnSave" disabled style="flex:1;padding:10px 14px;border-radius:10px;background:#2a2a22;color:#5d7568;font-size:13px;font-weight:700;border:none;">সেভ করো</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MONEY MODAL -->
+  <div id="moneyModalOverlay" class="modal-overlay hidden">
+    <div class="modal-box glass" onclick="event.stopPropagation()">
+      <div id="moneyModalTitle" style="font-size:15px;font-weight:700;margin-bottom:16px;"></div>
+      <label style="font-size:12px;color:#7c9485;display:block;margin-bottom:6px;">পরিমাণ (টাকা)</label>
+      <input type="number" inputmode="decimal" id="amountInput" placeholder="যেমন: 500" style="margin-bottom:14px;" />
+      <label style="font-size:12px;color:#7c9485;display:block;margin-bottom:6px;">নোট (ঐচ্ছিক)</label>
+      <input type="text" id="noteInput" placeholder="যেমন: টিউশনি, বাস ভাড়া" />
+      <div id="moneyModalError" style="color:#e6a3a3;font-size:12px;margin-top:10px;"></div>
+      <div style="display:flex;gap:8px;margin-top:18px;">
+        <button class="btn" id="moneyCancel" style="padding:10px 14px;border-radius:10px;background:transparent;color:#7c9485;font-size:13px;border:1px solid rgba(120,180,140,0.18);">বাতিল</button>
+        <button class="btn" id="moneySave" style="flex:1;padding:10px 14px;border-radius:10px;color:#fff;font-size:13px;font-weight:700;border:none;">সেভ করো</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const MONTHS_BN = ["জানুয়ারি","ফেব্রুয়ারি","মার্চ","এপ্রিল","মে","জুন","জুলাই","আগস্ট","সেপ্টেম্বর","অক্টোবর","নভেম্বর","ডিসেম্বর"];
+  const WEEKDAYS_BN = ["রবি","সোম","মঙ্গল","বুধ","বৃহ","শুক্র","শনি"];
+  const BN_DIGITS = ["০","১","২","৩","৪","৫","৬","৭","৮","৯"];
+  const YEAR = new Date().getFullYear();
+  const HABIT_PREFIX = "habit:";
+  const FIN_PREFIX = "fin:";
+
+  function toBn(num){ return String(num).replace(/[0-9]/g, (d) => BN_DIGITS[d]); }
+  function pad(n){ return n < 10 ? "0"+n : ""+n; }
+  function fmtMoney(n){ return toBn(Math.round(n).toLocaleString("en-US")); }
+  function todayISO(){ const t=new Date(); return `${t.getFullYear()}-${pad(t.getMonth()+1)}-${pad(t.getDate())}`; }
+
+  function getAllByPrefix(prefix){
+    const data = {};
+    for (let i=0;i<localStorage.length;i++){
+      const k = localStorage.key(i);
+      if (k && k.startsWith(prefix)){
+        try { data[k] = JSON.parse(localStorage.getItem(k)); } catch(e) {}
+      }
+    }
+    return data;
+  }
+
+  function addRipple(e, el){
+    const rect = el.getBoundingClientRect();
+    const ripple = document.createElement("span");
+    const size = Math.max(rect.width, rect.height);
+    ripple.className = "ripple";
+    ripple.style.width = ripple.style.height = size + "px";
+    ripple.style.left = ((e.clientX ?? rect.left+rect.width/2) - rect.left - size/2) + "px";
+    ripple.style.top = ((e.clientY ?? rect.top+rect.height/2) - rect.top - size/2) + "px";
+    el.appendChild(ripple);
+    setTimeout(() => ripple.remove(), 500);
+  }
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest(".btn");
+    if (btn) addRipple(e, btn);
+  });
+
+  /* ---------- Splash ---------- */
+  window.addEventListener("load", () => {
+    setTimeout(() => {
+      const s = document.getElementById("splash");
+      s.classList.add("hide");
+      setTimeout(() => s.remove(), 500);
+    }, 600);
+  });
+
+  /* ---------- TAB SWITCHING ---------- */
+  const tabCalendarBtn = document.getElementById("tabCalendarBtn");
+  const tabMoneyBtn = document.getElementById("tabMoneyBtn");
+  const pageCalendar = document.getElementById("pageCalendar");
+  const pageMoney = document.getElementById("pageMoney");
+
+  tabCalendarBtn.onclick = () => {
+    tabCalendarBtn.classList.add("active"); tabMoneyBtn.classList.remove("active");
+    pageCalendar.classList.add("active"); pageMoney.classList.remove("active");
+  };
+  tabMoneyBtn.onclick = () => {
+    tabMoneyBtn.classList.add("active"); tabCalendarBtn.classList.remove("active");
+    pageMoney.classList.add("active"); pageCalendar.classList.remove("active");
+    renderMoney();
+  };
+
+  /* ====================== CALENDAR LOGIC ====================== */
+  let activeMonth = new Date().getMonth();
+  let selected = null;
+  let mode = null;
+
+  function dateKey(y,m,d){ return `${HABIT_PREFIX}${y}-${pad(m+1)}-${pad(d)}`; }
+  function todayKey(){ const t=new Date(); return dateKey(t.getFullYear(), t.getMonth(), t.getDate()); }
+  function daysInMonth(y,m){ return new Date(y, m+1, 0).getDate(); }
+  function firstWeekday(y,m){ return new Date(y, m, 1).getDay(); }
+
+  function renderMonthTabs(){
+    const el = document.getElementById("monthTabs");
+    el.innerHTML = "";
+    MONTHS_BN.forEach((m,i)=>{
+      const b = document.createElement("button");
+      b.className = "btn month-tab" + (i===activeMonth ? " active" : "");
+      b.textContent = m;
+      b.onclick = () => { activeMonth = i; renderCalendarAll(); };
+      el.appendChild(b);
+    });
+  }
+
+  function renderWeekHeader(){
+    const el = document.getElementById("weekHeader");
+    el.innerHTML = "";
+    WEEKDAYS_BN.forEach(w=>{
+      const d = document.createElement("div");
+      d.style.textAlign="center"; d.style.fontSize="11px"; d.style.color="#5d7568"; d.style.padding="2px 0";
+      d.textContent = w;
+      el.appendChild(d);
+    });
+  }
+
+  function renderCalendarGrid(){
+    const data = getAllByPrefix(HABIT_PREFIX);
+    const grid = document.getElementById("calendarGrid");
+    grid.innerHTML = "";
+    const totalDays = daysInMonth(YEAR, activeMonth);
+    const startWd = firstWeekday(YEAR, activeMonth);
+    const tKey = todayKey();
+
+    for (let i=0;i<startWd;i++) grid.appendChild(document.createElement("div"));
+    for (let d=1; d<=totalDays; d++){
+      const key = dateKey(YEAR, activeMonth, d);
+      const entry = data[key];
+      const isToday = key === tKey;
+      const btn = document.createElement("button");
+      btn.className = "btn day";
+      btn.textContent = toBn(d);
+      let bg="rgba(20,32,25,0.55)", border="rgba(120,180,140,0.12)", color="#cfe0d3";
+      if (entry && entry.status === "green"){ bg="rgba(29,58,38,0.7)"; border="#3f7a52"; color="#9fe6ad"; }
+      else if (entry && entry.status === "red"){ bg="rgba(58,29,29,0.7)"; border="#7a3f3f"; color="#e6a3a3"; }
+      btn.style.background = bg; btn.style.borderColor = border; btn.style.color = color;
+      if (isToday){ btn.style.outline = "1.5px solid #d9b54a"; btn.style.outlineOffset = "-1.5px"; btn.style.fontWeight = "700"; }
+      btn.onclick = () => openDay(YEAR, activeMonth, d);
+      grid.appendChild(btn);
+    }
+    renderHabitStats(data);
+  }
+
+  function renderHabitStats(data){
+    const vals = Object.values(data);
+    const g = vals.filter(e=>e.status==="green").length;
+    const r = vals.filter(e=>e.status==="red").length;
+    const total = g+r;
+    document.getElementById("greenCount").textContent = toBn(g);
+    document.getElementById("redCount").textContent = toBn(r);
+    document.getElementById("rate").textContent = total>0 ? toBn(Math.round((g/total)*100))+"%" : toBn(0)+"%";
+  }
+
+  function openDay(y,m,d){
+    const key = dateKey(y,m,d);
+    selected = { y,m,d,key };
+    const data = getAllByPrefix(HABIT_PREFIX);
+    const existing = data[key];
+    mode = existing ? existing.status : null;
+    document.getElementById("modalDate").textContent = `${toBn(d)} ${MONTHS_BN[m]}, ${toBn(y)}`;
+    document.getElementById("reasonInput").value = (existing && existing.status==="red") ? (existing.reason||"") : "";
+    document.getElementById("modalError").textContent = "";
+    document.getElementById("btnClear").style.display = existing ? "block" : "none";
+    updateModalMode();
+    document.getElementById("calModalOverlay").classList.remove("hidden");
+  }
+
+  function closeCalModal(){
+    document.getElementById("calModalOverlay").classList.add("hidden");
+    selected = null; mode = null;
+  }
+
+  function updateModalMode(){
+    const bg = document.getElementById("btnGreen");
+    const br = document.getElementById("btnRed");
+    const alh = document.getElementById("alhamdulillahMsg");
+    const rb = document.getElementById("reasonBox");
+    const save = document.getElementById("btnSave");
+
+    if (mode === "green"){
+      bg.style.background="#3f7a52"; bg.style.color="#fff"; bg.style.border="1.5px solid #7fce8f";
+      br.style.background="rgba(58,29,29,0.7)"; br.style.color="#e6a3a3"; br.style.border="1px solid rgba(122,63,63,0.4)";
+      alh.classList.remove("hidden"); rb.classList.add("hidden");
+    } else if (mode === "red"){
+      br.style.background="#7a3f3f"; br.style.color="#fff"; br.style.border="1.5px solid #e58a8a";
+      bg.style.background="rgba(29,58,38,0.7)"; bg.style.color="#9fe6ad"; bg.style.border="1px solid rgba(63,122,82,0.4)";
+      rb.classList.remove("hidden"); alh.classList.add("hidden");
+    } else {
+      bg.style.background="rgba(29,58,38,0.7)"; bg.style.color="#9fe6ad"; bg.style.border="1px solid rgba(63,122,82,0.4)";
+      br.style.background="rgba(58,29,29,0.7)"; br.style.color="#e6a3a3"; br.style.border="1px solid rgba(122,63,63,0.4)";
+      alh.classList.add("hidden"); rb.classList.add("hidden");
+    }
+    save.disabled = !mode;
+    save.style.background = mode ? "linear-gradient(135deg,#e3c364,#bd9a3d)" : "#2a2a22";
+    save.style.color = mode ? "#1a1305" : "#5d7568";
+    save.style.cursor = mode ? "pointer" : "not-allowed";
+  }
+
+  document.getElementById("btnGreen").onclick = () => { mode = "green"; updateModalMode(); };
+  document.getElementById("btnRed").onclick = () => { mode = "red"; updateModalMode(); };
+  document.getElementById("btnCancel").onclick = closeCalModal;
+  document.getElementById("calModalOverlay").onclick = closeCalModal;
+
+  document.getElementById("btnClear").onclick = () => {
+    if (!selected) return;
+    localStorage.removeItem(selected.key);
+    closeCalModal();
+    renderCalendarGrid();
+  };
+
+  document.getElementById("btnSave").onclick = () => {
+    if (!selected || !mode) return;
+    const reason = document.getElementById("reasonInput").value;
+    const payload = {
+      status: mode,
+      reason: mode === "red" ? (reason||"") : "",
+      note: mode === "green" ? "আলহামদুলিল্লাহ" : "",
+      savedAt: new Date().toISOString(),
+    };
+    try {
+      localStorage.setItem(selected.key, JSON.stringify(payload));
+      closeCalModal();
+      renderCalendarGrid();
+    } catch(e){
+      document.getElementById("modalError").textContent = "সেভ করতে সমস্যা হয়েছে: " + (e.message || e);
+    }
+  };
+
+  function renderCalendarAll(){
+    document.getElementById("yearTitle").textContent = toBn(YEAR);
+    renderMonthTabs();
+    renderWeekHeader();
+    renderCalendarGrid();
+  }
+
+  /* ====================== MONEY LOGIC ====================== */
+  let moneyModalType = null;
+  let confirmDeleteKey = null;
+
+  function fmtDateLabel(iso){
+    const [y,m,d] = iso.split("-").map(Number);
+    return `${toBn(d)} ${MONTHS_BN[m-1]}, ${toBn(y)}`;
+  }
+
+  function renderMoney(){
+    const entries = getAllByPrefix(FIN_PREFIX);
+    const list = Object.entries(entries).sort((a,b) => (b[1].createdAt||"").localeCompare(a[1].createdAt||""));
+    const totalIncome = list.reduce((s,[,e]) => e.type==="income" ? s+e.amount : s, 0);
+    const totalExpense = list.reduce((s,[,e]) => e.type==="expense" ? s+e.amount : s, 0);
+    const balance = totalIncome - totalExpense;
+
+    document.getElementById("balanceDisplay").textContent = "৳" + fmtMoney(balance);
+    document.getElementById("balanceDisplay").style.color = balance >= 0 ? "#9fe6ad" : "#e6a3a3";
+    document.getElementById("totalIncome").textContent = "৳" + fmtMoney(totalIncome);
+    document.getElementById("totalExpense").textContent = "৳" + fmtMoney(totalExpense);
+
+    const grouped = {};
+    for (const [key, e] of list){
+      if (!grouped[e.date]) grouped[e.date] = [];
+      grouped[e.date].push([key, e]);
+    }
+    const dateOrder = Object.keys(grouped).sort((a,b) => b.localeCompare(a));
+
+    const txList = document.getElementById("txList");
+    txList.innerHTML = "";
+
+    if (dateOrder.length === 0){
+      const empty = document.createElement("div");
+      empty.style.textAlign = "center"; empty.style.color = "#5d7568"; empty.style.padding = "30px"; empty.style.fontSize = "13px";
+      empty.textContent = "এখনো কোনো এন্ট্রি নেই";
+      txList.appendChild(empty);
+      return;
+    }
+
+    dateOrder.forEach(dateIso => {
+      const dayEntries = grouped[dateIso];
+      const dayNet = dayEntries.reduce((s,[,e]) => s + (e.type==="income" ? e.amount : -e.amount), 0);
+
+      const groupDiv = document.createElement("div");
+      groupDiv.style.marginBottom = "16px";
+
+      const headerDiv = document.createElement("div");
+      headerDiv.style.display = "flex"; headerDiv.style.justifyContent = "space-between";
+      headerDiv.style.alignItems = "baseline"; headerDiv.style.marginBottom = "6px"; headerDiv.style.padding = "0 2px";
+      headerDiv.innerHTML = `<span style="font-size:12px;color:#7c9485;font-weight:600;">${fmtDateLabel(dateIso)}</span>
+        <span class="bn-num" style="font-size:12px;color:${dayNet>=0?'#7fce8f':'#e58a8a'};font-weight:700;">${dayNet>=0?'+':'−'}৳${fmtMoney(Math.abs(dayNet))}</span>`;
+      groupDiv.appendChild(headerDiv);
+
+      const itemsDiv = document.createElement("div");
+      itemsDiv.style.display = "flex"; itemsDiv.style.flexDirection = "column"; itemsDiv.style.gap = "6px";
+
+      dayEntries.forEach(([key, e]) => {
+        const row = document.createElement("div");
+        row.className = "glass";
+        row.style.display = "flex"; row.style.alignItems = "center"; row.style.justifyContent = "space-between";
+        row.style.padding = "10px 12px";
+
+        const left = document.createElement("div");
+        left.style.display = "flex"; left.style.alignItems = "center"; left.style.gap = "10px"; left.style.minWidth = "0";
+        left.innerHTML = `<span style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;
+            background:${e.type==='income'?'rgba(29,58,38,0.7)':'rgba(58,29,29,0.7)'};color:${e.type==='income'?'#9fe6ad':'#e6a3a3'};font-size:14px;font-weight:700;flex-shrink:0;">
+            ${e.type==='income'?'+':'−'}</span>
+          <span style="font-size:13px;color:${e.note?'#cfe0d3':'#5d7568'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+            ${e.note || (e.type==='income' ? 'টাকা যোগ' : 'খরচ')}</span>`;
+
+        const right = document.createElement("div");
+        right.style.display = "flex"; right.style.alignItems = "center"; right.style.gap = "10px"; right.style.flexShrink = "0";
+
+        const amtSpan = document.createElement("span");
+        amtSpan.className = "bn-num";
+        amtSpan.style.fontSize = "14px"; amtSpan.style.fontWeight = "700";
+        amtSpan.style.color = e.type==="income" ? "#7fce8f" : "#e58a8a";
+        amtSpan.textContent = "৳" + fmtMoney(e.amount);
+        right.appendChild(amtSpan);
+
+        const delBtn = document.createElement("button");
+        delBtn.className = "btn";
+        if (confirmDeleteKey === key){
+          delBtn.style.fontSize = "11px"; delBtn.style.color = "#fff"; delBtn.style.background = "#7a3f3f";
+          delBtn.style.borderRadius = "6px"; delBtn.style.padding = "4px 8px";
+          delBtn.textContent = "নিশ্চিত?";
+          delBtn.onclick = () => { localStorage.removeItem(key); confirmDeleteKey = null; renderMoney(); };
+        } else {
+          delBtn.style.fontSize = "13px"; delBtn.style.color = "#5d7568"; delBtn.style.background = "transparent"; delBtn.style.padding = "2px 4px";
+          delBtn.textContent = "✕";
+          delBtn.onclick = () => { confirmDeleteKey = key; renderMoney(); };
+        }
+        right.appendChild(delBtn);
+
+        row.appendChild(left); row.appendChild(right);
+        itemsDiv.appendChild(row);
+      });
+
+      groupDiv.appendChild(itemsDiv);
+      txList.appendChild(groupDiv);
+    });
+  }
+
+  function openMoneyModal(type){
+    moneyModalType = type;
+    document.getElementById("amountInput").value = "";
+    document.getElementById("noteInput").value = "";
+    document.getElementById("moneyModalError").textContent = "";
+    const title = document.getElementById("moneyModalTitle");
+    const saveBtn = document.getElementById("moneySave");
+    if (type === "income"){
+      title.textContent = "+ টাকা যোগ করো"; title.style.color = "#9fe6ad";
+      saveBtn.style.background = "#3f7a52";
+      document.getElementById("amountInput").style.borderColor = "#3f7a52";
+      document.getElementById("noteInput").placeholder = "যেমন: টিউশনি, পকেট মানি";
+    } else {
+      title.textContent = "− খরচ যোগ করো"; title.style.color = "#e6a3a3";
+      saveBtn.style.background = "#7a3f3f";
+      document.getElementById("amountInput").style.borderColor = "#7a3f3f";
+      document.getElementById("noteInput").placeholder = "যেমন: বাস ভাড়া, খাবার";
+    }
+    document.getElementById("moneyModalOverlay").classList.remove("hidden");
+    document.getElementById("amountInput").focus();
+  }
+
+  function closeMoneyModal(){
+    document.getElementById("moneyModalOverlay").classList.add("hidden");
+    moneyModalType = null;
+  }
+
+  document.getElementById("btnAddIncome").onclick = () => openMoneyModal("income");
+  document.getElementById("btnAddExpense").onclick = () => openMoneyModal("expense");
+  document.getElementById("moneyCancel").onclick = closeMoneyModal;
+  document.getElementById("moneyModalOverlay").onclick = closeMoneyModal;
+
+  document.getElementById("moneySave").onclick = () => {
+    const amt = parseFloat(document.getElementById("amountInput").value);
+    if (!amt || amt <= 0){
+      document.getElementById("moneyModalError").textContent = "সঠিক টাকার পরিমাণ লেখো।";
+      return;
+    }
+    const note = document.getElementById("noteInput").value;
+    const id = `${FIN_PREFIX}${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+    const payload = { type: moneyModalType, amount: amt, note: note || "", date: todayISO(), createdAt: new Date().toISOString() };
+    try {
+      localStorage.setItem(id, JSON.stringify(payload));
+      closeMoneyModal();
+      renderMoney();
+    } catch(e){
+      document.getElementById("moneyModalError").textContent = "সেভ করতে সমস্যা হয়েছে: " + (e.message || e);
+    }
+  };
+
+  /* ---------- INIT ---------- */
+  renderCalendarAll();
+
+  if ("serviceWorker" in navigator){
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("sw.js").catch(()=>{});
+    });
+  }
+</script>
+</body>
+</html>
